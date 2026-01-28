@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JDFS - Interactive Project Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom scrollbar for cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        /* Chart container constraint classes */
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            height: 300px;
+        }
+        @media (min-width: 768px) {
+            .chart-wrapper {
+                height: 350px;
+            }
+        }
+
+        /* Interactive Card States */
+        .interactive-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .interactive-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .interactive-card.active {
+            border-color: #f97316; /* Orange-500 */
+            background-color: #fff7ed; /* Orange-50 */
+        }
+
+        /* Checkbox custom style */
+        .custom-checkbox:checked + div {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals with Orange/Blue Accents. Background: #fafafa (Zinc-50). Primary Text: #1f2937 (Gray-800). Accents: #f97316 (Orange-500) for actions, #3b82f6 (Blue-500) for tech info. -->
+    <!-- Application Structure Plan:
+         1. Hero Section: Project Overview & "Start" CTA.
+         2. Architecture Explorer: Interactive diagram using HTML/CSS grid. Users click components (Client, Server, DB, RMI) to see detailed specs. Rationale: Visualizes the abstract networking concepts.
+         3. Technology Breakdown (Chart): Doughnut chart showing the estimated effort distribution (Networking vs IO vs DB). Rationale: Helps students anticipate workload.
+         4. Database Schema Viewer: Interactive tables. Hover/Click to understand fields. Rationale: Clarifies the data model.
+         5. Dynamic Roadmap: A checklist-style timeline. Users can toggle "Done" states to simulate progress. Rationale: Gamifies the implementation phases.
+         6. Challenges & Solutions: Accordion interface. Rationale: Active learning about potential pitfalls.
+    -->
+    <!-- Visualization & Content Choices:
+         - Effort Distribution: Chart.js Doughnut. Goal: Inform/Organize. Shows relative complexity of modules.
+         - Architecture: CSS Grid with interactive Divs. Goal: Relationships. Users explore connections (TCP, RMI, JDBC).
+         - Roadmap: Javascript-driven checklist. Goal: Change/Track.
+         - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. All visuals are DOM elements or Canvas.
+    -->
+</head>
+<body class="bg-zinc-50 text-gray-800 font-sans leading-relaxed selection:bg-orange-200">
+
+<!-- Navigation -->
+<nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <div class="flex items-center">
+                <span class="text-2xl font-bold text-gray-900 tracking-tight">JDFS<span class="text-orange-500">.Planner</span></span>
+            </div>
+            <div class="hidden md:flex items-center space-x-8">
+                <button onclick="scrollToSection('architecture')" class="text-gray-600 hover:text-orange-600 font-medium transition-colors">Kiến Trúc</button>
+                <button onclick="scrollToSection('database')" class="text-gray-600 hover:text-orange-600 font-medium transition-colors">Cơ Sở Dữ Liệu</button>
+                <button onclick="scrollToSection('roadmap')" class="text-gray-600 hover:text-orange-600 font-medium transition-colors">Lộ Trình</button>
+                <button onclick="scrollToSection('challenges')" class="text-gray-600 hover:text-orange-600 font-medium transition-colors">Thách Thức</button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<header class="relative bg-white overflow-hidden">
+    <div class="max-w-7xl mx-auto">
+        <div class="relative z-10 pb-8 bg-white sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32 px-4 sm:px-6 lg:px-8 pt-20">
+            <main class="mt-10 mx-auto max-w-7xl sm:mt-12 md:mt-16 lg:mt-20 xl:mt-28">
+                <div class="sm:text-center lg:text-left">
+                    <h1 class="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+                        <span class="block xl:inline">Hệ Thống Quản Lý</span>
+                        <span class="block text-orange-500 xl:inline">File Phân Tán</span>
+                    </h1>
+                    <p class="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
+                        Dự án tổng hợp kiến thức Java Networking: IO, TCP Socket, RMI và JDBC. Mô phỏng Google Drive thu nhỏ trên mạng LAN.
+                    </p>
+                    <div class="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
+                        <div class="rounded-md shadow">
+                            <button onclick="scrollToSection('roadmap')" class="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 md:py-4 md:text-lg transition-colors">
+                                Bắt đầu dự án
+                            </button>
+                        </div>
+                        <div class="mt-3 sm:mt-0 sm:ml-3">
+                            <button onclick="scrollToSection('architecture')" class="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 md:py-4 md:text-lg transition-colors">
+                                Xem kiến trúc
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <div class="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2 bg-gray-50 flex items-center justify-center border-l border-gray-100">
+        <!-- Project Composition Chart -->
+        <div class="w-full max-w-md p-6">
+            <h3 class="text-center text-gray-500 font-semibold mb-4 uppercase tracking-wider text-sm">Ước lượng phân bổ kỹ thuật</h3>
+            <div class="chart-wrapper">
+                <canvas id="techDistributionChart"></canvas>
+            </div>
+            <p class="text-center text-xs text-gray-400 mt-2">Dựa trên độ phức tạp mã nguồn và thời gian triển khai.</p>
+        </div>
+    </div>
+</header>
+
+<!-- Architecture Section -->
+<section id="architecture" class="py-16 bg-zinc-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-extrabold text-gray-900">Kiến Trúc Hệ Thống</h2>
+            <p class="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
+                Mô hình Client-Server đa luồng. Chọn một thành phần bên dưới để xem chi tiết kỹ thuật và giao thức giao tiếp.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Diagram Column -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Top Row: Clients -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div onclick="updateArchDetail('client')" class="interactive-card bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-blue-300 relative group">
+                        <div class="absolute top-0 right-0 -mt-2 -mr-2 bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full uppercase">App</div>
+                        <h3 class="text-lg font-bold text-gray-800">Client App</h3>
+                        <p class="text-sm text-gray-500 mt-2">Giao diện người dùng (CLI/GUI)</p>
+                        <div class="mt-4 flex items-center justify-center space-x-2 text-xs font-mono bg-gray-50 p-2 rounded">
+                            <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                            <span>Socket.getOutputStream()</span>
+                        </div>
+                    </div>
+                    <div onclick="updateArchDetail('admin')" class="interactive-card bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-purple-300 relative group">
+                        <div class="absolute top-0 right-0 -mt-2 -mr-2 bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded-full uppercase">Admin</div>
+                        <h3 class="text-lg font-bold text-gray-800">Admin Dashboard</h3>
+                        <p class="text-sm text-gray-500 mt-2">Công cụ quản trị hệ thống</p>
+                        <div class="mt-4 flex items-center justify-center space-x-2 text-xs font-mono bg-gray-50 p-2 rounded">
+                            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                            <span>Naming.lookup()</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Connector Visual -->
+                <div class="flex justify-around items-center h-16 text-gray-400">
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-mono mb-1">TCP/IP (Custom Protocol)</span>
+                        <div class="w-0.5 h-8 bg-gray-300"></div>
+                        <div class="w-2 h-2 rounded-full bg-gray-300"></div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-mono mb-1">RMI (Remote Method Invocation)</span>
+                        <div class="w-0.5 h-8 bg-gray-300"></div>
+                        <div class="w-2 h-2 rounded-full bg-gray-300"></div>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Server & DB -->
+                <div class="grid grid-cols-1 gap-4">
+                    <div onclick="updateArchDetail('server')" class="interactive-card bg-white p-8 rounded-xl border-2 border-gray-100 hover:border-orange-300 relative">
+                        <div class="absolute top-0 right-0 -mt-2 -mr-2 bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded-full uppercase">Core</div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-gray-800">Storage Server</h3>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">Multi-threaded</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="bg-gray-50 p-3 rounded border border-gray-200">
+                                <span class="font-bold block text-gray-700">Socket Listener</span>
+                                <span class="text-gray-500 text-xs">Port 8080</span>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded border border-gray-200">
+                                <span class="font-bold block text-gray-700">RMI Registry</span>
+                                <span class="text-gray-500 text-xs">Port 1099</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- DB Connector -->
+                <div class="flex justify-center items-center h-8 text-gray-400">
+                    <div class="flex flex-col items-center">
+                        <div class="w-0.5 h-8 bg-gray-300"></div>
+                    </div>
+                </div>
+                <!-- DB -->
+                <div onclick="updateArchDetail('db')" class="interactive-card mx-auto w-2/3 bg-white p-4 rounded-xl border-2 border-gray-100 hover:border-yellow-300 text-center relative">
+                    <div class="absolute top-0 right-0 -mt-2 -mr-2 bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full uppercase">Data</div>
+                    <h3 class="text-lg font-bold text-gray-800">Database (MySQL/SQL Server)</h3>
+                    <p class="text-xs text-gray-400 mt-1">JDBC Connection</p>
+                </div>
+            </div>
+
+            <!-- Detail Column -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 flex flex-col">
+                <h3 class="text-lg font-bold text-gray-900 border-b pb-4 mb-4">Chi tiết thành phần</h3>
+                <div id="arch-detail-content" class="flex-grow">
+                    <p class="text-gray-500 italic text-center mt-20">Chọn một thành phần trong sơ đồ để xem chi tiết kỹ thuật.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Database Schema Section -->
+<section id="database" class="py-16 bg-white border-t border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="mb-10">
+            <h2 class="text-3xl font-extrabold text-gray-900">Cơ Sở Dữ Liệu</h2>
+            <p class="mt-4 text-lg text-gray-500">
+                Sử dụng JDBC để tương tác với cơ sở dữ liệu quan hệ. Dưới đây là lược đồ thiết kế (Schema).
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Table: Users -->
+            <div class="bg-zinc-50 rounded-lg p-4 border border-zinc-200">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-zinc-200">
+                    <h4 class="font-bold text-gray-700">Users Table</h4>
+                    <span class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Quản lý User</span>
+                </div>
+                <ul class="space-y-2 font-mono text-sm">
+                    <li class="flex justify-between"><span class="text-orange-600 font-bold">id</span> <span class="text-gray-400">PK, INT</span></li>
+                    <li class="flex justify-between"><span class="text-gray-700">username</span> <span class="text-gray-400">VARCHAR</span></li>
+                    <li class="flex justify-between"><span class="text-gray-700">password_hash</span> <span class="text-gray-400">VARCHAR</span></li>
+                    <li class="flex justify-between"><span class="text-gray-700">role</span> <span class="text-gray-400">VARCHAR</span></li>
+                </ul>
+            </div>
+
+            <!-- Table: Files -->
+            <div class="bg-zinc-50 rounded-lg p-4 border border-zinc-200">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-zinc-200">
+                    <h4 class="font-bold text-gray-700">Files Table</h4>
+                    <span class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Metadata File</span>
+                </div>
+                <ul class="space-y-2 font-mono text-sm">
+                    <li class="flex justify-between"><span class="text-orange-600 font-bold">id</span> <span class="text-gray-400">PK, INT</span></li>
+                    <li class="flex justify-between"><span class="text-blue-600 font-bold">user_id</span> <span class="text-gray-400">FK, INT</span></li>
+                    <li class="flex justify-between"><span class="text-gray-700">file_name</span> <span class="text-gray-400">VARCHAR</span></li>
+                    <li class="flex justify-between"><span class="text-gray-700">file_path</span> <span class="text-gray-400">VARCHAR</span></li>
+                    <li class="flex justify-between"><span class="text-gray-700">size</span> <span class="text-gray-400">BIGINT</span></li>
+                </ul>
+            </div>
+
+            <!-- Table: Logs -->
+            <div class="bg-zinc-50 rounded-lg p-4 border border-zinc-200 opacity-75">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-zinc-200">
+                    <h4 class="font-bold text-gray-700">Logs Table</h4>
+                    <span class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Lịch sử</span>
+                </div>
+                <ul class="space-y-2 font-mono text-sm">
+                    <li class="flex justify-between"><span class="text-orange-600 font-bold">id</span> <span class="text-gray-400">PK, INT</span></li>
+                    <li class="flex justify-between"><span class="text-gray-700">action</span> <span class="text-gray-400">VARCHAR</span></li>
+                    <li class="flex justify-between"><span class="text-gray-700">timestamp</span> <span class="text-gray-400">DATETIME</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Roadmap Section -->
+<section id="roadmap" class="py-16 bg-orange-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-extrabold text-gray-900">Lộ Trình Triển Khai</h2>
+            <p class="mt-4 text-gray-600">
+                Theo dõi tiến độ thực hiện dự án theo 3 giai đoạn. Tương tác với các mục bên dưới để đánh dấu hoàn thành.
+            </p>
+        </div>
+
+        <div class="space-y-8">
+            <!-- Phase 1 -->
+            <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                <div class="bg-orange-600 px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-white font-bold text-lg">Giai đoạn 1: Nền tảng (Socket & IO)</h3>
+                    <span id="progress-1" class="text-orange-100 text-sm font-mono">0% Completed</span>
+                </div>
+                <div class="p-6 space-y-4">
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="custom-checkbox form-checkbox h-5 w-5 text-orange-600 mt-1 rounded focus:ring-orange-500" onchange="updateProgress(1)">
+                        <div class="text-gray-700 group-hover:text-gray-900 transition-colors">
+                            <span class="font-bold block">Setup ServerSocket</span>
+                            <span class="text-sm text-gray-500">Khởi tạo Server lắng nghe tại port 8080 và chấp nhận kết nối.</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="custom-checkbox form-checkbox h-5 w-5 text-orange-600 mt-1 rounded focus:ring-orange-500" onchange="updateProgress(1)">
+                        <div class="text-gray-700 group-hover:text-gray-900 transition-colors">
+                            <span class="font-bold block">Hello World Connection</span>
+                            <span class="text-sm text-gray-500">Client gửi chuỗi String, Server nhận và in ra console.</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="custom-checkbox form-checkbox h-5 w-5 text-orange-600 mt-1 rounded focus:ring-orange-500" onchange="updateProgress(1)">
+                        <div class="text-gray-700 group-hover:text-gray-900 transition-colors">
+                            <span class="font-bold block">File Transfer Logic</span>
+                            <span class="text-sm text-gray-500">Sử dụng FileInputStream/FileOutputStream để truyền file nhị phân.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Phase 2 -->
+            <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+                <div class="bg-blue-600 px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-white font-bold text-lg">Giai đoạn 2: Quản lý (JDBC)</h3>
+                    <span id="progress-2" class="text-blue-100 text-sm font-mono">0% Completed</span>
+                </div>
+                <div class="p-6 space-y-4">
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="custom-checkbox form-checkbox h-5 w-5 text-blue-600 mt-1 rounded focus:ring-blue-500" onchange="updateProgress(2)">
+                        <div class="text-gray-700 group-hover:text-gray-900 transition-colors">
+                            <span class="font-bold block">Database Integration</span>
+                            <span class="text-sm text-gray-500">Kết nối JDBC và tạo các bảng Users, Files.</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="custom-checkbox form-checkbox h-5 w-5 text-blue-600 mt-1 rounded focus:ring-blue-500" onchange="updateProgress(2)">
+                        <div class="text-gray-700 group-hover:text-gray-900 transition-colors">
+                            <span class="font-bold block">Authentication</span>
+                            <span class="text-sm text-gray-500">Xử lý logic Đăng ký và Đăng nhập.</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="custom-checkbox form-checkbox h-5 w-5 text-blue-600 mt-1 rounded focus:ring-blue-500" onchange="updateProgress(2)">
+                        <div class="text-gray-700 group-hover:text-gray-900 transition-colors">
+                            <span class="font-bold block">Metadata Sync</span>
+                            <span class="text-sm text-gray-500">Lưu thông tin file vào DB sau khi upload thành công.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Phase 3 -->
+            <div class="bg-white rounded-xl shadow-sm border border-purple-100 overflow-hidden">
+                <div class="bg-purple-600 px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-white font-bold text-lg">Giai đoạn 3: Nâng cao (RMI & Security)</h3>
+                    <span id="progress-3" class="text-purple-100 text-sm font-mono">0% Completed</span>
+                </div>
+                <div class="p-6 space-y-4">
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="custom-checkbox form-checkbox h-5 w-5 text-purple-600 mt-1 rounded focus:ring-purple-500" onchange="updateProgress(3)">
+                        <div class="text-gray-700 group-hover:text-gray-900 transition-colors">
+                            <span class="font-bold block">RMI Server Setup</span>
+                            <span class="text-sm text-gray-500">Chạy RMI Registry song song với Socket Server.</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="custom-checkbox form-checkbox h-5 w-5 text-purple-600 mt-1 rounded focus:ring-purple-500" onchange="updateProgress(3)">
+                        <div class="text-gray-700 group-hover:text-gray-900 transition-colors">
+                            <span class="font-bold block">Admin Tool</span>
+                            <span class="text-sm text-gray-500">Xây dựng ứng dụng quản lý (kick user, view stats).</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" class="custom-checkbox form-checkbox h-5 w-5 text-purple-600 mt-1 rounded focus:ring-purple-500" onchange="updateProgress(3)">
+                        <div class="text-gray-700 group-hover:text-gray-900 transition-colors">
+                            <span class="font-bold block">Data Encryption</span>
+                            <span class="text-sm text-gray-500">Mã hóa AES cho stream dữ liệu.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Challenges Section -->
+<section id="challenges" class="py-16 bg-white border-t border-gray-200">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl font-extrabold text-gray-900 text-center mb-10">Thách Thức & Giải Pháp</h2>
+
+        <div class="space-y-4">
+            <!-- Challenge 1 -->
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <button class="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition-colors focus:outline-none" onclick="toggleChallenge('c1')">
+                    <span class="font-bold text-gray-800">Concurrency: Xử lý nhiều Client cùng lúc</span>
+                    <span id="icon-c1" class="text-gray-500 transform transition-transform duration-200">▼</span>
+                </button>
+                <div id="c1" class="hidden p-4 bg-white text-gray-600 text-sm leading-relaxed border-t border-gray-200">
+                    <p class="mb-2"><strong class="text-orange-600">Vấn đề:</strong> Nếu Server xử lý tuần tự (Client 1 xong mới đến Client 2), hệ thống sẽ bị treo nếu có file lớn đang truyền.</p>
+                    <p><strong class="text-green-600">Giải pháp:</strong> Sử dụng <code>Thread Pool</code> (ExecutorService). Mỗi khi có kết nối mới (<code>serverSocket.accept()</code>), đẩy Socket đó vào một Thread riêng biệt để xử lý song song.</p>
+                </div>
+            </div>
+
+            <!-- Challenge 2 -->
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <button class="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition-colors focus:outline-none" onclick="toggleChallenge('c2')">
+                    <span class="font-bold text-gray-800">Packet Loss/Corruption: Dữ liệu bị lỗi</span>
+                    <span id="icon-c2" class="text-gray-500 transform transition-transform duration-200">▼</span>
+                </button>
+                <div id="c2" class="hidden p-4 bg-white text-gray-600 text-sm leading-relaxed border-t border-gray-200">
+                    <p class="mb-2"><strong class="text-orange-600">Vấn đề:</strong> Trong mạng LAN, gói tin có thể bị mất hoặc sai lệch bit.</p>
+                    <p><strong class="text-green-600">Giải pháp:</strong> Sử dụng TCP (đảm bảo thứ tự và toàn vẹn gói tin). Ngoài ra, ở tầng ứng dụng, tính toán <code>MD5 Checksum</code> của file trước khi gửi và sau khi nhận để đối chiếu.</p>
+                </div>
+            </div>
+
+            <!-- Challenge 3 -->
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <button class="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition-colors focus:outline-none" onclick="toggleChallenge('c3')">
+                    <span class="font-bold text-gray-800">Path Handling: Khác biệt hệ điều hành</span>
+                    <span id="icon-c3" class="text-gray-500 transform transition-transform duration-200">▼</span>
+                </button>
+                <div id="c3" class="hidden p-4 bg-white text-gray-600 text-sm leading-relaxed border-t border-gray-200">
+                    <p class="mb-2"><strong class="text-orange-600">Vấn đề:</strong> Windows dùng <code>\</code> trong khi Linux/Mac dùng <code>/</code> để phân cách thư mục.</p>
+                    <p><strong class="text-green-600">Giải pháp:</strong> Luôn sử dụng <code>File.separator</code> hoặc thư viện <code>java.nio.file.Paths</code> để xử lý đường dẫn một cách an toàn và độc lập nền tảng.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-gray-900 text-white py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+        <div>
+            <p class="font-bold text-lg">JDFS Project</p>
+            <p class="text-gray-400 text-sm">Bài tập lớn Lập trình mạng Java</p>
+        </div>
+        <div class="text-sm text-gray-500">
+            Generated based on Project Outline v1.0
+        </div>
+    </div>
+</footer>
+
+<script>
+    // --- State Management ---
+    const archDetails = {
+        'client': {
+            title: 'Client App',
+            desc: 'Thành phần giao tiếp với người dùng cuối.',
+            tech: ['java.net.Socket', 'java.io.InputStream', 'java.io.OutputStream', 'Swing/JavaFX (Optional GUI)'],
+            role: 'Khởi tạo kết nối đến Server, gửi yêu cầu (Upload/Download) và hiển thị kết quả.'
+        },
+        'server': {
+            title: 'Storage Server',
+            desc: 'Trung tâm xử lý logic của hệ thống.',
+            tech: ['ServerSocket', 'Thread/ExecutorService', 'JDBC Connection Pool', 'File I/O'],
+            role: 'Lắng nghe port 8080. Với mỗi client, tạo một luồng riêng để xử lý giao thức truyền file. Lưu metadata vào DB.'
+        },
+        'db': {
+            title: 'Database',
+            desc: 'Lưu trữ thông tin phi cấu trúc.',
+            tech: ['MySQL/SQL Server', 'JDBC Driver'],
+            role: 'Lưu trữ thông tin tài khoản, đường dẫn file vật lý, và nhật ký hoạt động. Không lưu nội dung file (binary) trực tiếp.'
+        },
+        'admin': {
+            title: 'Admin Dashboard (RMI)',
+            desc: 'Công cụ quản trị từ xa.',
+            tech: ['java.rmi', 'Remote Interface'],
+            role: 'Kết nối đến Server qua giao thức RMI (không phải Socket truyền thống) để gọi các hàm quản trị như kickUser() hoặc getStats().'
+        }
+    };
+
+    // --- Interaction Functions ---
+
+    function scrollToSection(id) {
+        document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updateArchDetail(key) {
+        const contentDiv = document.getElementById('arch-detail-content');
+        const data = archDetails[key];
+
+        // Remove active class from all cards
+        document.querySelectorAll('.interactive-card').forEach(el => el.classList.remove('active'));
+        // Add active class to clicked card (simple logic based on onclick attribute matching)
+        const clickedCard = document.querySelector(`div[onclick="updateArchDetail('${key}')"]`);
+        if(clickedCard) clickedCard.classList.add('active');
+
+        contentDiv.innerHTML = `
+                <div class="animate-fade-in-up">
+                    <h4 class="text-xl font-bold text-orange-600 mb-2">${data.title}</h4>
+                    <p class="text-gray-700 mb-4">${data.desc}</p>
+
+                    <div class="mb-4">
+                        <h5 class="font-bold text-sm text-gray-900 uppercase tracking-wide mb-2">Vai trò chính</h5>
+                        <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-100">${data.role}</p>
+                    </div>
+
+                    <div>
+                        <h5 class="font-bold text-sm text-gray-900 uppercase tracking-wide mb-2">Công nghệ lõi</h5>
+                        <div class="flex flex-wrap gap-2">
+                            ${data.tech.map(t => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-mono">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+    }
+
+    function updateProgress(phaseId) {
+        // Find all checkboxes in the specific phase container (by traversing DOM relative to phase ID logic is simplest here)
+        // But strict ID selection is safer.
+        const container = document.querySelector(`#progress-${phaseId}`).parentElement.nextElementSibling;
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+        const total = checkboxes.length;
+        let checked = 0;
+        checkboxes.forEach(cb => {
+            if (cb.checked) checked++;
+        });
+
+        const percent = Math.round((checked / total) * 100);
+        document.getElementById(`progress-${phaseId}`).innerText = `${percent}% Completed`;
+    }
+
+    function toggleChallenge(id) {
+        const content = document.getElementById(id);
+        const icon = document.getElementById(`icon-${id}`);
+
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.style.transform = 'rotate(180deg)';
+        } else {
+            content.classList.add('hidden');
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    // --- Chart Initialization ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('techDistributionChart').getContext('2d');
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Networking (Socket/RMI)', 'Data (JDBC/SQL)', 'File IO/Logic', 'Security/Utils'],
+                datasets: [{
+                    data: [40, 30, 20, 10],
+                    backgroundColor: [
+                        '#f97316', // Orange-500
+                        '#3b82f6', // Blue-500
+                        '#10b981', // Emerald-500
+                        '#8b5cf6'  // Violet-500
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.label}: ${context.raw}% nỗ lực`;
+                            }
+                        }
+                    }
+                },
+                cutout: '70%',
+            }
+        });
+
+        // Initialize details with server selected by default
+        updateArchDetail('server');
+    });
+
+</script>
+</body>
+</html>
