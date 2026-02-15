@@ -1,6 +1,7 @@
 package dev.nlu.utils;
 
 import dev.nlu.model.User;
+import org.sqlite.core.DB;
 
 import java.sql.*;
 import java.util.Optional;
@@ -16,56 +17,12 @@ public class DBUtils {
         }
     }
 
-    public Connection getConnection() throws SQLException {
+    public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL);
     }
 
-    public void createTable() throws SQLException {
-        String users = """
-                create table if not exists users (
-                    id integer primary key autoincrement,
-                    username text not null,
-                    password text not null,
-                    role text not null
-                );
-                """;
-
-        String files = """
-                create table if not exists files (
-                    id integer primary key autoincrement,
-                    user_id integer not null references users(id) on delete cascade, 
-                    file_name text not null,
-                    file_part text not null,
-                    size integer
-                );
-                """;
-
-        String logs = """
-                create table if not exists logs (
-                    id integer primary key autoincrement,
-                    action text not null,
-                    timestamp datetime default current_timestamp
-                );
-                """;
-
-        try (Connection connection = getConnection();
-             Statement st = connection.createStatement();
-        ) {
-            // Turn on FK constraint
-            st.execute("pragma foreign_keys = on");
-
-            st.execute(users);
-            st.execute(files);
-            st.execute(logs);
-
-            System.out.println("Tables created successfully.");
-        } catch (SQLException e) {
-            System.err.println("Create table failed: " + e.getMessage());
-        }
-    }
-
-    public Optional<User> validateUser(String username, String password) throws SQLException {
-        String sql = "select * from users where username=? and password=?";
+    public static Optional<User> validateUser(String username, String password){
+        String sql = "select * from user where username=? and password=?";
         try (Connection connection = getConnection();
              PreparedStatement ps = connection.prepareStatement(sql);) {
             ps.setString(1, username);
@@ -77,7 +34,6 @@ public class DBUtils {
                                     .id(rs.getInt("id"))
                                     .username(rs.getString("username"))
                                     .password(rs.getString("password"))
-                                    .role(rs.getString("role"))
                                     .build()
                     );
                 }
@@ -89,10 +45,11 @@ public class DBUtils {
         return Optional.empty();
     }
 
-    public Optional<User> getUserById(int id) throws SQLException {
-        String sql = "select * from users where id=?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);) {
+    public Optional<User> findById(int id){
+        String sql = "select * from user where id=?";
+        try (Connection conn = getConnection();
+        PreparedStatement ps = conn.prepareStatement(sql);
+        ) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -100,21 +57,21 @@ public class DBUtils {
                             .id(rs.getInt("id"))
                             .username(rs.getString("username"))
                             .password(rs.getString("password"))
-                            .role(rs.getString("role"))
                             .build());
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Get user failed: " + e.getMessage());
+            throw new RuntimeException(e);
         }
 
         return Optional.empty();
     }
 
-    public Optional<User> getUserByUsername(String username) throws SQLException {
-        String sql = "select * from users where id=?";
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql);) {
+    public  Optional<User> findByUsername(String username) {
+        String sql = "select * from user where username=?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+        ) {
             ps.setString(1, username);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -122,12 +79,11 @@ public class DBUtils {
                             .id(rs.getInt("id"))
                             .username(rs.getString("username"))
                             .password(rs.getString("password"))
-                            .role(rs.getString("role"))
                             .build());
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Get user failed: " + e.getMessage());
+            throw new RuntimeException(e);
         }
 
         return Optional.empty();
